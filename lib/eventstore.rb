@@ -1,6 +1,8 @@
 require 'securerandom'
 
 class Eventstore
+  VERSION = "0.0.1"
+
   attr_reader :connection, :context, :error_handler
   def initialize(host, port=2113)
     @context = ConnectionContext.new
@@ -11,16 +13,12 @@ class Eventstore
     context.on_error(error, &block)
   end
 
-  def send_command(*args, &block)
-    connection.send_command(*args, &block)
-  end
-
   def close
     connection.close
   end
 
   def ping
-    send_command("Ping")
+    connection.send_command("Ping")
   end
 
   def new_event(event_type, data, content_type: "json", uuid: nil)
@@ -43,7 +41,7 @@ class Eventstore
       events: events,
       require_master: true
     )
-    send_command("WriteEvents", msg)
+    connection.send_command("WriteEvents", msg)
   end
 
   def read_stream_events_forward(stream, start, max)
@@ -54,7 +52,7 @@ class Eventstore
       resolve_link_tos: true,
       require_master: false
     )
-    send_command("ReadStreamEventsForward", msg)
+    connection.send_command("ReadStreamEventsForward", msg)
   end
 
   def new_catchup_subscription(*args)
@@ -67,10 +65,11 @@ class Eventstore
 
 end
 
-require "eventstore/version"
-require "eventstore/commands"
-require "eventstore/messages"
-require "eventstore/connection"
-require "eventstore/subscription"
-require "eventstore/catchup_subscription"
+require_relative "eventstore/messages"
+require_relative "eventstore/connection_context"
+require_relative "eventstore/connection"
+require_relative "eventstore/connection/buffer"
+require_relative "eventstore/connection/commands"
+require_relative "eventstore/subscription"
+require_relative "eventstore/catchup_subscription"
 

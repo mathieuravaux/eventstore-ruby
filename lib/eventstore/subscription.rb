@@ -1,8 +1,8 @@
 class Eventstore
   class Subscription
-    attr_reader :es, :stream, :resolve_link_tos
-    def initialize(es, stream, resolve_link_tos: true)
-      @es = es
+    attr_reader :connection, :stream, :resolve_link_tos
+    def initialize(connection, stream, resolve_link_tos: true)
+      @connection = connection
       @stream = stream
       @resolve_link_tos = resolve_link_tos
     end
@@ -27,6 +27,13 @@ class Eventstore
       subscribe
     end
 
+    def stop
+      if @subscribe_response
+        connection.send_command("UnsubscribeFromStream", UnsubscribeFromStream.new, uuid: @subscribe_response.correlation_id)
+      end
+      @subscribe_response = nil
+    end
+
     def event_appeared(event)
       on_event(event)
     end
@@ -35,8 +42,8 @@ class Eventstore
 
     def subscribe
       args = SubscribeToStream.new(event_stream_id: stream, resolve_link_tos: resolve_link_tos)
-      prom = es.send_command("SubscribeToStream", args, self)
-      prom.sync
+      @subscribe_response = connection.send_command("SubscribeToStream", args, self)
+      @subscribe_response.sync
     end
   end
 end

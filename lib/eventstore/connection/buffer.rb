@@ -4,7 +4,7 @@ class Eventstore
     [a, b, "-", c, "-", d, "-", e, "-", f, g, h].join("")
   end
 
-  class Buffer
+  class Connection::Buffer
     attr_reader :buffer, :handler, :mutex
     def initialize(&block)
       @mutex = Mutex.new
@@ -43,7 +43,7 @@ class Eventstore
       uuid_bytes = frame[2...(2 + 16)]
       message = frame[18..-1]
 
-      command = Eventstore.command_name(code)
+      command = Eventstore::Connection.command_name(code)
       handler.call(command, message, Eventstore.binary_to_uuid(uuid_bytes), flags)
     end
 

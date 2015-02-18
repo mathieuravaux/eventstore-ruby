@@ -1,6 +1,3 @@
-require_relative "buffer"
-require_relative "connection_context"
-
 class Eventstore
   class CannotConnectError < RuntimeError; end
   class DisconnectionError < RuntimeError; end
@@ -27,11 +24,11 @@ class Eventstore
       socket.close
     end
 
-    def send_command(command, msg=nil, target=nil)
+    def send_command(command, msg=nil, target=nil, uuid=nil)
       code = COMMANDS.fetch(command)
       msg.validate! if msg
 
-      correlation_id = SecureRandom.uuid
+      correlation_id = uuid || SecureRandom.uuid
       frame = encode_message(code, correlation_id, msg)
 
       mutex.synchronize do
@@ -51,28 +48,24 @@ class Eventstore
       # p fn: "on_received_package", command: command
       #callback = context.received_package(uuid, command, message)
       case command
-      when "Pong"then context.fulfilled_command(uuid, "Pong")
-      when "HeartbeatRequestCommand"
-        send_command("HeartbeatResponseCommand")
-      when "SubscriptionConfirmation"
-        data = decode(SubscriptionConfirmation, message)
-        context.fulfilled_command(uuid, data)
-      when "ReadStreamEventsForwardCompleted"
-        data = decode(ReadStreamEventsCompleted, message)
-        context.fulfilled_command(uuid, data)
-      when "WriteEventsCompleted"
-        data = decode(WriteEventsCompleted, message)
-        if data.result == OperationResult::Success
-          context.fulfilled_command(uuid, data)
-        else
-          p fn: "on_received_package", command: command, result: data.result
-          context.rejected_command(uuid, data)
-        end
-      when "StreamEventAppeared"
-        data = decode(StreamEventAppeared, message)
-        context.trigger(uuid, "event_appeared", data.event)
+      when "Pong" then                              context.fulfilled_command(uuid, "Pong")
+      when "HeartbeatRequestCommand" then           send_command("HeartbeatResponseCommand")
+      when "SubscriptionConfirmation" then          context.fulfilled_command(uuid, decode(SubscriptionConfirmation, message))
+      when "ReadStreamEventsForwardCompleted" then  context.fulfilled_command(uuid, decode(ReadStreamEventsCompleted, message))
+      when "StreamEventAppeared" then               context.trigger(uuid, "event_appeared", decode(StreamEventAppeared, message).event)
+      when "WriteEventsCompleted" then              on_write_events_completed(uuid, decode(WriteEventsCompleted, message))
       else fail command
       end
+    end
+
+    def on_write_events_completed(uuid, response)
+      if response.result != OperationResult::Success
+        p fn: "on_write_events_completed", at: error, result: response.result
+        context.rejected_command(uuid, response)
+        return
+      end
+
+      context.fulfilled_command(uuid, response)
     end
 
     def decode(type, message)
@@ -136,4 +129,3 @@ class Eventstore
 
   end
 end
-

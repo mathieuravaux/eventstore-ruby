@@ -2,6 +2,12 @@ require 'promise'
 
 class Eventstore
   class Promise < ::Promise
+    attr_reader :correlation_id
+    def initialize(correlation_id)
+      super()
+      @correlation_id = correlation_id
+    end
+
     def wait
       t = Thread.current
       resume = proc { t.wakeup }
@@ -26,6 +32,7 @@ class Eventstore
       when "SubscribeToStream" then promise(uuid, target)
       when "WriteEvents" then promise(uuid)
       when "HeartbeatResponseCommand" then :nothing_to_do
+      when "UnsubscribeFromStream" then :nothing_to_do
       else fail("Unknown command #{command}")
       end
     end
@@ -65,7 +72,7 @@ class Eventstore
     private
 
     def promise(uuid, target=nil)
-      prom = Promise.new
+      prom = Promise.new(uuid)
       mutex.synchronize {
         requests[uuid] = prom
         targets[uuid] = target

@@ -2,10 +2,12 @@ class Eventstore
   class CatchUpSubscription < Subscription
     MAX_READ_BATCH = 100
 
-    attr_reader :from, :last_backfill_event, :caught_up, :mutex
+    attr_reader :es, :from, :last_backfill_event, :caught_up, :mutex
 
     def initialize(es, stream, from, resolve_link_tos: true)
-      super(es, stream, resolve_link_tos: resolve_link_tos)
+      super(es.connection, stream, resolve_link_tos: resolve_link_tos)
+
+      @es = es
 
       @from = from
       @last_backfill_event = from
@@ -38,7 +40,6 @@ class Eventstore
       unless caught_up
         mutex.synchronize do
           unless caught_up
-            @first_live_event ||= event
             @received_while_backfilling << event
           end
         end
