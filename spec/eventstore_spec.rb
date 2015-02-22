@@ -2,37 +2,36 @@ require 'spec_helper'
 require 'pry'
 
 describe Eventstore do
-  let(:es) { Eventstore.new("localhost", 1113) }
+  let(:es) { Eventstore.new('localhost', 1113) }
   subject { new_event_store }
   let(:injector) { new_event_store }
 
   def new_event_store
-    es = Eventstore.new("localhost", 1113)
+    es = Eventstore.new('localhost', 1113)
     es.on_error { |error| Thread.main.raise(error) }
     es
   end
 
-  it "supports the PING command" do
-    Timeout::timeout(1) do
+  it 'supports the PING command' do
+    Timeout.timeout(1) do
       promise = es.ping
       result = promise.sync
-      expect(result).to eql "Pong"
+      expect(result).to eql 'Pong'
     end
   end
 
-
   def inject_event(stream)
-    event_type = "TestEvent"
-    data = JSON.generate({ at: Time.now.to_i, foo: "bar" })
+    event_type = 'TestEvent'
+    data = JSON.generate(at: Time.now.to_i, foo: 'bar')
     event = injector.new_event(event_type, data)
-    #puts ">#{stream}\t\t#{event.inspect}"
+    # puts ">#{stream}\t\t#{event.inspect}"
     prom = injector.write_events(stream, event)
     prom.sync
   end
 
-  it "dumps the content of the outlet stream from the last checkpoint" do
+  it 'dumps the content of the outlet stream from the last checkpoint' do
     inject_events("outlet", 50)
-    events = subject.read_stream_events_forward("outlet", 1, 20).sync
+    events = subject.read_stream_events_forward('outlet', 1, 20).sync
     expect(events).to be_kind_of(Eventstore::ReadStreamEventsCompleted)
     events.events.each do |event|
       expect(event).to be_kind_of(Eventstore::ResolvedIndexedEvent)
@@ -53,21 +52,20 @@ describe Eventstore do
   end
 
   def inject_events(stream, target)
-    target.times do |i|
+    target.times do |_i|
       inject_event(stream)
     end
   end
 
-
-  it "allows to make a live subscription" do
+  it 'allows to make a live subscription' do
     stream = "catchup-test-#{SecureRandom.uuid}"
     received = 0
 
 
     sub = subject.new_subscription(stream)
-    sub.on_event { |event| received += 1 }
+    sub.on_event { |_event| received += 1 }
     sub.on_error { |error| fail(error.inspect) }
-    sub.start()
+    sub.start
 
     inject_events(stream, 50)
 
@@ -77,26 +75,23 @@ describe Eventstore do
         sleep(0.1)
       end
     end
-
   end
 
-
-  it "allows to make a catch-up subscription" do
+  it 'allows to make a catch-up subscription' do
     stream = "catchup-test-#{SecureRandom.uuid}"
     received = 0
     mutex = Mutex.new
 
+    expect(subject.ping.sync).to eql 'Pong'
 
-    expect(subject.ping.sync).to eql "Pong"
-
-    #puts "stream: #{stream}"
+    # puts "stream: #{stream}"
 
     inject_events(stream, 1220)
 
     sub = subject.new_catchup_subscription(stream, -1)
-    sub.on_event { |event| mutex.synchronize { received += 1 } }
+    sub.on_event { |_event| mutex.synchronize { received += 1 } }
     sub.on_error { |error| fail error.inspect }
-    sub.start()
+    sub.start
 
     inject_events_async(stream, 780)
 
@@ -106,9 +101,5 @@ describe Eventstore do
         sleep(0.1)
       end
     end
-
   end
-
-
-
 end

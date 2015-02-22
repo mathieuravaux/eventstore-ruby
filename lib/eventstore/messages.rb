@@ -1,8 +1,7 @@
 ## Generated from vendor/proto/ClientMessageDtos.proto for EventStore.Client.Messages
-require "beefcake"
+require 'beefcake'
 
 class Eventstore
-
   module OperationResult
     Success = 0
     PrepareTimeout = 1
@@ -320,7 +319,7 @@ class Eventstore
     repeated :events, ResolvedEvent, 3
     required :next_commit_position, :int64, 4
     required :next_prepare_position, :int64, 5
-    optional :result, ReadAllEventsCompleted::ReadAllResult, 6, :default => ReadAllEventsCompleted::ReadAllResult::Success
+    optional :result, ReadAllEventsCompleted::ReadAllResult, 6, default: ReadAllEventsCompleted::ReadAllResult::Success
     optional :error, :string, 7
   end
 
@@ -342,11 +341,10 @@ class Eventstore
   end
 
   class SubscriptionDropped
-    optional :reason, SubscriptionDropped::SubscriptionDropReason, 1, :default => SubscriptionDropped::SubscriptionDropReason::Unsubscribed
+    optional :reason, SubscriptionDropped::SubscriptionDropReason, 1, default: SubscriptionDropped::SubscriptionDropReason::Unsubscribed
   end
 
   class NotHandled
-
     class MasterInfo
       required :external_tcp_address, :string, 1
       required :external_tcp_port, :int32, 2

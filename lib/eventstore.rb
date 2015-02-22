@@ -1,15 +1,15 @@
 require 'securerandom'
 
 class Eventstore
-  VERSION = "0.0.1"
+  VERSION = '0.0.1'
 
   attr_reader :connection, :context, :error_handler
-  def initialize(host, port=2113)
+  def initialize(host, port = 2113)
     @context = ConnectionContext.new
     @connection = Connection.new(host, port, context)
   end
 
-  def on_error(error=nil, &block)
+  def on_error(error = nil, &block)
     context.on_error(error, &block)
   end
 
@@ -18,12 +18,12 @@ class Eventstore
   end
 
   def ping
-    connection.send_command("Ping")
+    connection.send_command('Ping')
   end
 
-  def new_event(event_type, data, content_type: "json", uuid: nil)
+  def new_event(event_type, data, content_type: 'json', uuid: nil)
     uuid ||= SecureRandom.uuid
-    content_type_code = {"json" => 1}.fetch(content_type, 0)
+    content_type_code = { 'json' => 1 }.fetch(content_type, 0)
     NewEvent.new(
       event_id: Eventstore.uuid_to_binary(uuid),
       event_type: event_type,
@@ -41,7 +41,7 @@ class Eventstore
       events: events,
       require_master: true
     )
-    connection.send_command("WriteEvents", msg)
+    connection.send_command('WriteEvents', msg)
   end
 
   def read_stream_events_forward(stream, start, max)
@@ -52,7 +52,7 @@ class Eventstore
       resolve_link_tos: true,
       require_master: false
     )
-    connection.send_command("ReadStreamEventsForward", msg)
+    connection.send_command('ReadStreamEventsForward', msg)
   end
 
   def new_catchup_subscription(*args)
@@ -62,14 +62,12 @@ class Eventstore
   def new_subscription(*args)
     Subscription.new(connection, *args)
   end
-
 end
 
-require_relative "eventstore/messages"
-require_relative "eventstore/connection_context"
-require_relative "eventstore/connection"
-require_relative "eventstore/connection/buffer"
-require_relative "eventstore/connection/commands"
-require_relative "eventstore/subscription"
-require_relative "eventstore/catchup_subscription"
-
+require_relative 'eventstore/messages'
+require_relative 'eventstore/connection_context'
+require_relative 'eventstore/connection'
+require_relative 'eventstore/connection/buffer'
+require_relative 'eventstore/connection/commands'
+require_relative 'eventstore/subscription'
+require_relative 'eventstore/catchup_subscription'

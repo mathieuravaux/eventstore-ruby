@@ -7,7 +7,7 @@ class Eventstore
       @resolve_link_tos = resolve_link_tos
     end
 
-    def on_error(error=nil, &block)
+    def on_error(error = nil, &block)
       if block
         @on_error = block
       else
@@ -15,7 +15,7 @@ class Eventstore
       end
     end
 
-    def on_event(event=nil, &block)
+    def on_event(event = nil, &block)
       if block
         @on_event = block
       else
@@ -29,7 +29,7 @@ class Eventstore
 
     def stop
       if @subscribe_response
-        connection.send_command("UnsubscribeFromStream", UnsubscribeFromStream.new, uuid: @subscribe_response.correlation_id)
+        connection.send_command('UnsubscribeFromStream', UnsubscribeFromStream.new, uuid: @subscribe_response.correlation_id)
       end
       @subscribe_response = nil
     end
@@ -42,7 +42,7 @@ class Eventstore
 
     def subscribe
       args = SubscribeToStream.new(event_stream_id: stream, resolve_link_tos: resolve_link_tos)
-      @subscribe_response = connection.send_command("SubscribeToStream", args, self)
+      @subscribe_response = connection.send_command('SubscribeToStream', args, self)
       @subscribe_response.sync
     end
   end

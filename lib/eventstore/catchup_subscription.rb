@@ -21,7 +21,7 @@ class Eventstore
       if block
         @on_catchup = block
       else
-        @on_catchup.call() if @on_catchup
+        @on_catchup.call if @on_catchup
       end
     end
 
@@ -32,7 +32,7 @@ class Eventstore
         break if is_end_of_stream
       end
       switch_to_live
-      on_catchup()
+      on_catchup
     end
 
     def event_appeared(event)
@@ -55,16 +55,16 @@ class Eventstore
       # puts "fn=backfill stream=#{stream} at=page_start last_backfill_event=#{last_backfill_event}"
       prom = es.read_stream_events_forward(stream, last_backfill_event + 1, MAX_READ_BATCH)
       response = prom.sync
-      #puts "fn=backfill stream=#{stream} at=received"
+      # puts "fn=backfill stream=#{stream} at=received"
       # p response
       mutex.synchronize do
-        Array(response.events).each { |event|
+        Array(response.events).each do |event|
           on_event(event)
           @last_backfill_event = event.event.event_number
-        }
+        end
       end
       # puts "fn=backfill stream=#{stream} at=page_done"
-      return response.is_end_of_stream
+      response.is_end_of_stream
     end
 
     def switch_to_live

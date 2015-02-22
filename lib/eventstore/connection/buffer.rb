@@ -1,14 +1,14 @@
 class Eventstore
   def self.binary_to_uuid(bytes)
-    a, b, c, d, e, f, g, h = *bytes.unpack('n*').map {|n| n.to_s(16) }.map { |n| n.rjust(4, "0") }
-    [a, b, "-", c, "-", d, "-", e, "-", f, g, h].join("")
+    a, b, c, d, e, f, g, h = *bytes.unpack('n*').map { |n| n.to_s(16) }.map { |n| n.rjust(4, '0') }
+    [a, b, '-', c, '-', d, '-', e, '-', f, g, h].join('')
   end
 
   class Connection::Buffer
     attr_reader :buffer, :handler, :mutex
     def initialize(&block)
       @mutex = Mutex.new
-      @buffer = ""
+      @buffer = ''
       @handler = block
     end
 
@@ -27,9 +27,9 @@ class Eventstore
     end
 
     def consume_next_package
-      #puts "fn=consume_next_package buffer=#{buffer.inspect}"
+      # puts "fn=consume_next_package buffer=#{buffer.inspect}"
       return :incomplete if buffer.length < 4
-      length = buffer[0...4].unpack("l<").first
+      length = buffer[0...4].unpack('l<').first
       frame = buffer[4...(4 + length)]
       return :incomplete if frame.bytesize < length
       handle_frame(frame)
@@ -46,6 +46,5 @@ class Eventstore
       command = Eventstore::Connection.command_name(code)
       handler.call(command, message, Eventstore.binary_to_uuid(uuid_bytes), flags)
     end
-
   end
 end

@@ -24,7 +24,7 @@ class Eventstore
       socket.close
     end
 
-    def send_command(command, msg=nil, target=nil, uuid=nil)
+    def send_command(command, msg = nil, target = nil, uuid = nil)
       code = COMMANDS.fetch(command)
       msg.validate! if msg
 
@@ -44,23 +44,23 @@ class Eventstore
 
     private
 
-    def on_received_package(command, message, uuid, flags)
+    def on_received_package(command, message, uuid, _flags)
       # p fn: "on_received_package", command: command
-      #callback = context.received_package(uuid, command, message)
+      # callback = context.received_package(uuid, command, message)
       case command
-      when "Pong" then                              context.fulfilled_command(uuid, "Pong")
-      when "HeartbeatRequestCommand" then           send_command("HeartbeatResponseCommand")
-      when "SubscriptionConfirmation" then          context.fulfilled_command(uuid, decode(SubscriptionConfirmation, message))
-      when "ReadStreamEventsForwardCompleted" then  context.fulfilled_command(uuid, decode(ReadStreamEventsCompleted, message))
-      when "StreamEventAppeared" then               context.trigger(uuid, "event_appeared", decode(StreamEventAppeared, message).event)
-      when "WriteEventsCompleted" then              on_write_events_completed(uuid, decode(WriteEventsCompleted, message))
+      when 'Pong' then                              context.fulfilled_command(uuid, 'Pong')
+      when 'HeartbeatRequestCommand' then           send_command('HeartbeatResponseCommand')
+      when 'SubscriptionConfirmation' then          context.fulfilled_command(uuid, decode(SubscriptionConfirmation, message))
+      when 'ReadStreamEventsForwardCompleted' then  context.fulfilled_command(uuid, decode(ReadStreamEventsCompleted, message))
+      when 'StreamEventAppeared' then               context.trigger(uuid, 'event_appeared', decode(StreamEventAppeared, message).event)
+      when 'WriteEventsCompleted' then              on_write_events_completed(uuid, decode(WriteEventsCompleted, message))
       else fail command
       end
     end
 
     def on_write_events_completed(uuid, response)
       if response.result != OperationResult::Success
-        p fn: "on_write_events_completed", at: error, result: response.result
+        p fn: 'on_write_events_completed', at: error, result: response.result
         context.rejected_command(uuid, response)
         return
       end
@@ -69,15 +69,13 @@ class Eventstore
     end
 
     def decode(type, message)
-      begin
-        type.decode(message)
-      rescue => error
-        puts "Protobuf decoding error"
-        puts error.inspect
-        p type: type, message: message
-        puts "\n\n"
-        puts(*error.backtrace)
-      end
+      type.decode(message)
+    rescue => error
+      puts 'Protobuf decoding error'
+      puts error.inspect
+      p type: type, message: message
+      puts "\n\n"
+      puts(*error.backtrace)
     end
 
     def socket
@@ -89,8 +87,8 @@ class Eventstore
       process_downstream
       @socket
     rescue TimeoutError, Errno::ECONNREFUSED, Errno::EHOSTDOWN,
-      Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ETIMEDOUT
-      raise CannotConnectError, "Error connecting to Eventstore on #{host.inspect}:#{port.inspect} (#{$!.class})"
+           Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ETIMEDOUT
+      raise CannotConnectError, "Error connecting to Eventstore on #{host.inspect}:#{port.inspect} (#{$ERROR_INFO.class})"
     end
 
     def process_downstream
@@ -102,8 +100,8 @@ class Eventstore
           end
         rescue IOError, EOFError
           unless @terminating
-            #puts "Eventstore disconnected"
-            context.on_error(DisconnectionError.new("Eventstore disconnected"))
+            # puts "Eventstore disconnected"
+            context.on_error(DisconnectionError.new('Eventstore disconnected'))
           end
         rescue => error
           puts error.inspect
@@ -126,6 +124,5 @@ class Eventstore
       envelope << frame
       envelope
     end
-
   end
 end

@@ -24,34 +24,34 @@ class Eventstore
       @targets = {}
     end
 
-    def register_command(uuid, command, target=nil)
-      #p fn: "register_command", uuid: uuid, command: command
+    def register_command(uuid, command, target = nil)
+      # p fn: "register_command", uuid: uuid, command: command
       case command
-      when "Ping" then promise(uuid)
-      when "ReadStreamEventsForward" then promise(uuid)
-      when "SubscribeToStream" then promise(uuid, target)
-      when "WriteEvents" then promise(uuid)
-      when "HeartbeatResponseCommand" then :nothing_to_do
-      when "UnsubscribeFromStream" then :nothing_to_do
+      when 'Ping' then promise(uuid)
+      when 'ReadStreamEventsForward' then promise(uuid)
+      when 'SubscribeToStream' then promise(uuid, target)
+      when 'WriteEvents' then promise(uuid)
+      when 'HeartbeatResponseCommand' then :nothing_to_do
+      when 'UnsubscribeFromStream' then :nothing_to_do
       else fail("Unknown command #{command}")
       end
     end
 
     def fulfilled_command(uuid, value)
       prom = nil
-      mutex.synchronize {
+      mutex.synchronize do
         prom = requests.delete(uuid)
-      }
-      #p fn: "fulfilled_command", uuid: uuid, prom: prom, requests: requests
+      end
+      # p fn: "fulfilled_command", uuid: uuid, prom: prom, requests: requests
       prom.fulfill(value) if prom
     end
 
     def rejected_command(uuid, error)
       prom = nil
-      mutex.synchronize {
+      mutex.synchronize do
         prom = requests.delete(uuid)
-      }
-      #p fn: "fulfilled_command", uuid: uuid, prom: prom, requests: requests
+      end
+      # p fn: "fulfilled_command", uuid: uuid, prom: prom, requests: requests
       prom.reject(error) if prom
     end
 
@@ -61,7 +61,7 @@ class Eventstore
       target.__send__(method, *args)
     end
 
-    def on_error(error=nil, &block)
+    def on_error(error = nil, &block)
       if block
         @error_handler = block
       else
@@ -71,15 +71,13 @@ class Eventstore
 
     private
 
-    def promise(uuid, target=nil)
+    def promise(uuid, target = nil)
       prom = Promise.new(uuid)
-      mutex.synchronize {
+      mutex.synchronize do
         requests[uuid] = prom
         targets[uuid] = target
-      }
+      end
       prom
     end
-
   end
 end
-
