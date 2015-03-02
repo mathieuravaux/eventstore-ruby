@@ -60,7 +60,7 @@ class Eventstore
   end
 
   def new_subscription(*args)
-    Subscription.new(self, *args)
+    Subscription.new(connection, *args)
   end
 
 end
