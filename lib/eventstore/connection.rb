@@ -34,7 +34,6 @@ class Eventstore
       mutex.synchronize do
         promise = context.register_command(correlation_id, command, target)
         # puts "Sending #{command} command with correlation id #{correlation_id}"
-        # puts "Sending to socket: #{frame.length} #{frame.inspect}"
         to_write = frame.to_s
         written = socket.write(to_write)
         fail if written != to_write.bytesize
