@@ -1,0 +1,11 @@
+AllCops:
+  Exclude:
+    - 'lib/eventstore/messages.rb'
+    - 'vendor/**/*'
+    - 'spec/fixtures/**/*'
+
+Metrics/LineLength:
+  Max: 140
+
+# Style/Documentation:
+#   Enabled: false
