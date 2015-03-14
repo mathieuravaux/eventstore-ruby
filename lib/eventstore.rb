@@ -9,7 +9,7 @@ require 'securerandom'
 #
 # To get maximum performance from the connection, it is recommended that it be used asynchronously.
 class Eventstore
-  VERSION = '0.0.1'
+  VERSION = '0.0.2'
 
   attr_reader :host, :port, :connection, :context, :error_handler
   def initialize(host, port = 2113)

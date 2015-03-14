@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = 'eventstore'
-  spec.version       = '0.0.1'
+  spec.version       = '0.0.2'
   spec.authors       = ['Mathieu Ravaux']
   spec.email         = ['mathieu.ravaux@gmail.com']
   spec.summary       = 'Ruby client API for the Event Store.'
