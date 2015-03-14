@@ -19,7 +19,7 @@ class Eventstore
       package
     end
 
-    def encore_uuid(uuid)
+    def self.encode_uuid(uuid)
       uuid.scan(/[0-9a-f]{4}/).map { |x| x.to_i(16) }.pack('n*')
     end
 

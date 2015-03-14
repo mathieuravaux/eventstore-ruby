@@ -9,8 +9,6 @@ require 'securerandom'
 #
 # To get maximum performance from the connection, it is recommended that it be used asynchronously.
 class Eventstore
-  VERSION = '0.0.2'
-
   attr_reader :host, :port, :connection, :context, :error_handler
   def initialize(host, port = 2113)
     @host = host
@@ -35,7 +33,7 @@ class Eventstore
     uuid ||= SecureRandom.uuid
     content_type_code = { 'json' => 1 }.fetch(content_type, 0)
     NewEvent.new(
-      event_id: Eventstore.uuid_to_binary(uuid),
+      event_id: Package.encode_uuid(uuid),
       event_type: event_type,
       data: data,
       data_content_type: content_type_code,
