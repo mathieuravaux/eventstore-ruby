@@ -1,11 +1,4 @@
 class Eventstore
-  class CannotConnectError < RuntimeError; end
-  class DisconnectionError < RuntimeError; end
-
-  def self.uuid_to_binary(uuid)
-    uuid.scan(/[0-9a-f]{4}/).map { |x| x.to_i(16) }.pack('n*')
-  end
-
   # Connection owns the TCP socket, formats and sends commands over the socket.
   # It also starts a background thread to read from the TCP socket and handle received packages,
   # dispatching them to the calling app.
@@ -27,19 +20,19 @@ class Eventstore
       socket.close
     end
 
-    def send_command(command, msg = nil, target = nil, uuid = nil)
+    def send_command(command, msg = nil, handler = nil, uuid = nil)
       code = COMMANDS.fetch(command)
       msg.validate! if msg
 
       correlation_id = uuid || SecureRandom.uuid
-      frame = encode_message(code, correlation_id, msg)
+      frame = Package.encode(code, correlation_id, msg)
 
       mutex.synchronize do
-        promise = context.register_command(correlation_id, command, target)
+        promise = context.register_command(correlation_id, command, handler)
         # puts "Sending #{command} command with correlation id #{correlation_id}"
+        # puts "Sending to socket: #{frame.length} #{frame.inspect}"
         to_write = frame.to_s
-        written = socket.write(to_write)
-        fail if written != to_write.bytesize
+        socket.write(to_write)
         promise
       end
     end
@@ -54,8 +47,11 @@ class Eventstore
       when 'Pong' then                              context.fulfilled_command(uuid, 'Pong')
       when 'HeartbeatRequestCommand' then           send_command('HeartbeatResponseCommand')
       when 'SubscriptionConfirmation' then          context.fulfilled_command(uuid, decode(SubscriptionConfirmation, message))
-      when 'ReadStreamEventsForwardCompleted' then  context.fulfilled_command(uuid, decode(ReadStreamEventsCompleted, message))
-      when 'StreamEventAppeared' then               context.trigger(uuid, 'event_appeared', decode(StreamEventAppeared, message).event)
+      when 'ReadStreamEventsForwardCompleted'
+        context.fulfilled_command(uuid, decode(ReadStreamEventsCompleted, message))
+      when 'StreamEventAppeared'
+        resolved_event = decode(StreamEventAppeared, message).event
+        context.trigger(uuid, 'event_appeared', resolved_event)
       when 'WriteEventsCompleted' then              on_write_events_completed(uuid, decode(WriteEventsCompleted, message))
       else fail command
       end
@@ -80,6 +76,7 @@ class Eventstore
       p type: type, message: message
       puts "\n\n"
       puts(*error.backtrace)
+      raise error
     end
 
     def socket
@@ -88,7 +85,9 @@ class Eventstore
 
     def connect
       @socket = TCPSocket.open(host, port)
-      process_downstream
+      Thread.new do
+        process_downstream
+      end
       @socket
     rescue TimeoutError, Errno::ECONNREFUSED, Errno::EHOSTDOWN,
            Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ETIMEDOUT
@@ -96,37 +95,24 @@ class Eventstore
     end
 
     def process_downstream
-      Thread.new do
-        begin
-          loop do
-            bytes = socket.readpartial(1024)
-            buffer << bytes
-          end
-        rescue IOError, EOFError
-          unless @terminating
-            # puts "Eventstore disconnected"
-            context.on_error(DisconnectionError.new('Eventstore disconnected'))
-          end
-        rescue => error
-          puts error.inspect
-          puts(*error.backtrace)
-          context.on_error(error)
-        end
+      loop do
+        buffer << socket.sysread(4096)
       end
+    rescue IOError, EOFError
+      on_disconnect
+    rescue => error
+      on_exception(error)
     end
 
-    def encode_message(code, correlation_id, msg)
-      frame = Beefcake::Buffer.new
-      frame << code
-      frame << 0x0 # non authenticated
-      uuid_bytes = Eventstore.uuid_to_binary(correlation_id)
-      uuid_bytes.each_byte { |b| frame << b }
-      msg.encode(frame) if msg
+    def on_disconnect
+      return if @terminating
+      puts 'Eventstore disconnected'
+      context.on_error(DisconnectionError.new('Eventstore disconnected'))
+    end
 
-      envelope = Beefcake::Buffer.new
-      envelope.append_fixed32(frame.length)
-      envelope << frame
-      envelope
+    def on_exception(error)
+      puts "process_downstream_error #{error.inspect}"
+      context.on_error(error)
     end
   end
 end

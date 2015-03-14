@@ -12,82 +12,83 @@ class Eventstore
   class CatchUpSubscription < Subscription
     MAX_READ_BATCH = 100
 
-    attr_reader :es, :from, :last_backfill_event, :caught_up, :mutex
+    attr_reader :from, :caught_up
 
-    def initialize(es, stream, from, resolve_link_tos: true)
-      super(es.connection, stream, resolve_link_tos: resolve_link_tos)
-
-      @es = es
-
+    def initialize(eventstore, stream, from, resolve_link_tos: true, batch_size: MAX_READ_BATCH)
+      super(eventstore, stream, resolve_link_tos: resolve_link_tos)
       @from = from
-      @last_backfill_event = from
       @caught_up = false
 
       @mutex = Mutex.new
-      @received_while_backfilling = []
+      @queue = []
+      @position = from
+      @batch_size = batch_size
     end
 
     def on_catchup(&block)
-      if block
-        @on_catchup = block
-      else
-        @on_catchup.call if @on_catchup
-      end
+      @on_catchup = block if block
     end
 
     def start
       subscribe
-      loop do
-        is_end_of_stream = backfill
-        break if is_end_of_stream
-      end
+      backfill
       switch_to_live
-      on_catchup
-    end
-
-    def event_appeared(event)
-      # puts fn: "event_appeared", caught_up: caught_up,  event_number: event.event.event_number
-      unless caught_up
-        mutex.synchronize do
-          unless caught_up
-            @received_while_backfilling << event
-          end
-        end
-      end
-      if caught_up
-        on_event(event)
-      end
+      call_on_catchup
     end
 
     private
 
-    def backfill
-      # puts "fn=backfill stream=#{stream} at=page_start last_backfill_event=#{last_backfill_event}"
-      prom = es.read_stream_events_forward(stream, last_backfill_event + 1, MAX_READ_BATCH)
-      response = prom.sync
-      # puts "fn=backfill stream=#{stream} at=received"
-      # p response
-      mutex.synchronize do
-        Array(response.events).each do |event|
-          on_event(event)
-          @last_backfill_event = event.event.event_number
+    def event_appeared(event)
+      unless caught_up
+        @mutex.synchronize do
+          @queue.push(event) unless caught_up
         end
       end
-      # puts "fn=backfill stream=#{stream} at=page_done"
-      response.is_end_of_stream
+      dispatch(event) if caught_up
     end
 
     def switch_to_live
-      # puts "fn=switch_to_live"
-      mutex.synchronize do
-        @received_while_backfilling.each do |event|
-          if event.event.event_number > @last_backfill_event
-            # puts fn: "event_at_switch", event_number: event.event.event_number
-            on_event(event)
-          end
-        end
+      log("fn=switch_to_live id=#{@id} stream=#{stream} at=start position=#{@position} queue_size=#{@queue.size}")
+      @mutex.synchronize do
+        dispatch_events(received_while_backfilling)
+        @queue = nil
         @caught_up = true
       end
+      log("fn=switch_to_live id=#{@id} stream=#{stream} at=finish position=#{@position}")
+    end
+
+    def backfill
+      log("fn=backfill at=start position=#{@position}")
+      loop do
+        events, finished = fetch_batch(@position + 1)
+        @mutex.synchronize do
+          dispatch_events(events)
+        end
+        break if finished
+      end
+      log("fn=backfill at=finish position=#{@position}")
+    end
+
+    def dispatch_events(events)
+      events.each { |e| dispatch(e) }
+    end
+
+    def fetch_batch(from)
+      prom = eventstore.read_stream_events_forward(stream, from, @batch_size)
+      response = prom.sync
+      [Array(response.events), response.is_end_of_stream]
+    end
+
+    def received_while_backfilling
+      @queue.find_all { |event| event.original_event_number > @position }
+    end
+
+    def call_on_catchup
+      @on_catchup.call if @on_catchup
+    end
+
+    def log(msg)
+      puts(msg)
     end
   end
 end

@@ -8,27 +8,20 @@ class Eventstore
   # the subscriber can expect to see event number 101 onwards until the time
   # the subscription is closed or dropped.
   class Subscription
-    attr_reader :connection, :stream, :resolve_link_tos
-    def initialize(connection, stream, resolve_link_tos: true)
-      @connection = connection
+    attr_reader :eventstore, :stream, :resolve_link_tos, :id, :position
+
+    def initialize(eventstore, stream, resolve_link_tos: true)
+      @eventstore = eventstore
       @stream = stream
       @resolve_link_tos = resolve_link_tos
     end
 
-    def on_error(error = nil, &block)
-      if block
-        @on_error = block
-      else
-        @on_error.call(error) if @on_error
-      end
+    def on_error(&block)
+      @on_error = block if block
     end
 
-    def on_event(event = nil, &block)
-      if block
-        @on_event = block
-      else
-        @on_event.call(event) if @on_event
-      end
+    def on_event(&block)
+      @on_event = block if block
     end
 
     def start
@@ -36,22 +29,29 @@ class Eventstore
     end
 
     def stop
-      if @subscribe_response
-        connection.send_command('UnsubscribeFromStream', UnsubscribeFromStream.new, uuid: @subscribe_response.correlation_id)
-      end
-      @subscribe_response = nil
-    end
-
-    def event_appeared(event)
-      on_event(event)
+      eventstore.unsubscribe_from_stream(uuid) if uuid
+      @uuid = nil
     end
 
     private
 
     def subscribe
-      args = SubscribeToStream.new(event_stream_id: stream, resolve_link_tos: resolve_link_tos)
-      @subscribe_response = connection.send_command('SubscribeToStream', args, self)
-      @subscribe_response.sync
+      prom = eventstore.subscribe_to_stream(self, stream, resolve_link_tos)
+      @id = prom.correlation_id
+      prom.sync
+    end
+
+    def call_on_error(error)
+      @on_error.call(error) if @on_error
+    end
+
+    def dispatch(event)
+      @on_event.call(event) if @on_event
+      @position = event.original_event_number
+    end
+
+    def event_appeared(event)
+      dispatch(event)
     end
   end
 end

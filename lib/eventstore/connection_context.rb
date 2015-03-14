@@ -62,7 +62,7 @@ class Eventstore
       prom.reject(error) if prom
     end
 
-    def trigger(uuid, method, args)
+    def trigger(uuid, method, *args)
       target = mutex.synchronize { targets[uuid] }
       return if target.nil?
       target.__send__(method, *args)

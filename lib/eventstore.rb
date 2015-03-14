@@ -65,12 +65,16 @@ class Eventstore
     command('ReadStreamEventsForward', msg)
   end
 
-  def new_catchup_subscription(*args)
-    CatchUpSubscription.new(self, *args)
+  def subscribe_to_stream(handler, stream, resolve_link_tos = false)
+    msg = SubscribeToStream.new(event_stream_id: stream, resolve_link_tos: resolve_link_tos)
+    command('SubscribeToStream', msg, handler)
   end
 
-  def new_subscription(*args)
-    Subscription.new(connection, *args)
+  def unsubscribe_from_stream(subscription_uuid)
+    msg = UnsubscribeFromStream.new
+    command('UnsubscribeFromStream', msg, uuid: subscription_uuid)
+  end
+
   private
 
   def command(*args)
@@ -78,7 +82,10 @@ class Eventstore
   end
 end
 
+require_relative 'eventstore/errors'
+require_relative 'eventstore/package'
 require_relative 'eventstore/messages'
+require_relative 'eventstore/message_extensions'
 require_relative 'eventstore/connection_context'
 require_relative 'eventstore/connection'
 require_relative 'eventstore/connection/buffer'
