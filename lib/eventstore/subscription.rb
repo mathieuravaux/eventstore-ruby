@@ -29,8 +29,8 @@ class Eventstore
     end
 
     def stop
-      eventstore.unsubscribe_from_stream(uuid) if uuid
-      @uuid = nil
+      eventstore.unsubscribe_from_stream(id) if id
+      @id = nil
     end
 
     private
