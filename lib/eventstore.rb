@@ -11,8 +11,10 @@ require 'securerandom'
 class Eventstore
   VERSION = '0.0.1'
 
-  attr_reader :connection, :context, :error_handler
+  attr_reader :host, :port, :connection, :context, :error_handler
   def initialize(host, port = 2113)
+    @host = host
+    @port = port
     @context = ConnectionContext.new
     @connection = Connection.new(host, port, context)
   end
@@ -26,7 +28,7 @@ class Eventstore
   end
 
   def ping
-    connection.send_command('Ping')
+    command('Ping')
   end
 
   def new_event(event_type, data, content_type: 'json', uuid: nil)
@@ -49,7 +51,7 @@ class Eventstore
       events: events,
       require_master: true
     )
-    connection.send_command('WriteEvents', msg)
+    command('WriteEvents', msg)
   end
 
   def read_stream_events_forward(stream, start, max)
@@ -60,7 +62,7 @@ class Eventstore
       resolve_link_tos: true,
       require_master: false
     )
-    connection.send_command('ReadStreamEventsForward', msg)
+    command('ReadStreamEventsForward', msg)
   end
 
   def new_catchup_subscription(*args)
@@ -69,6 +71,10 @@ class Eventstore
 
   def new_subscription(*args)
     Subscription.new(connection, *args)
+  private
+
+  def command(*args)
+    connection.send_command(*args)
   end
 end
 
