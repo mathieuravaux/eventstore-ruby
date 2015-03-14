@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'pry'
 
 describe Eventstore do
   let(:es) { Eventstore.new('localhost', 1113) }
@@ -30,7 +29,7 @@ describe Eventstore do
   end
 
   it 'dumps the content of the outlet stream from the last checkpoint' do
-    inject_events("outlet", 50)
+    inject_events('outlet', 50)
     events = subject.read_stream_events_forward('outlet', 1, 20).sync
     expect(events).to be_kind_of(Eventstore::ReadStreamEventsCompleted)
     events.events.each do |event|
@@ -60,7 +59,6 @@ describe Eventstore do
   it 'allows to make a live subscription' do
     stream = "catchup-test-#{SecureRandom.uuid}"
     received = 0
-
 
     sub = subject.new_subscription(stream)
     sub.on_event { |_event| received += 1 }

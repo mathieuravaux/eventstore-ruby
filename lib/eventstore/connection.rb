@@ -6,6 +6,9 @@ class Eventstore
     uuid.scan(/[0-9a-f]{4}/).map { |x| x.to_i(16) }.pack('n*')
   end
 
+  # Connection owns the TCP socket, formats and sends commands over the socket.
+  # It also starts a background thread to read from the TCP socket and handle received packages,
+  # dispatching them to the calling app.
   class Connection
     attr_reader :host, :port, :context, :error_handler
     attr_reader :buffer, :mutex
@@ -43,8 +46,9 @@ class Eventstore
 
     private
 
+    # rubocop:disable Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/MethodLength
     def on_received_package(command, message, uuid, _flags)
-      # p fn: "on_received_package", command: command
+      # p(fn: "on_received_package", command: command)
       # callback = context.received_package(uuid, command, message)
       case command
       when 'Pong' then                              context.fulfilled_command(uuid, 'Pong')
@@ -56,6 +60,7 @@ class Eventstore
       else fail command
       end
     end
+    # rubocop:enable Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/MethodLength
 
     def on_write_events_completed(uuid, response)
       if response.result != OperationResult::Success
@@ -70,7 +75,7 @@ class Eventstore
     def decode(type, message)
       type.decode(message)
     rescue => error
-      puts 'Protobuf decoding error'
+      puts "Protobuf decoding error on connection #{object_id}"
       puts error.inspect
       p type: type, message: message
       puts "\n\n"

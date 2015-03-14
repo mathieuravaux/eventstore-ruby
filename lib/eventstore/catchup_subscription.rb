@@ -1,4 +1,14 @@
 class Eventstore
+  # Catch-Up Subscriptions
+  #
+  # This kind of subscription specifies a starting point, in the form of an event
+  # number or transaction file position. The given function will be called for events
+  # from the starting point until the end of the stream, and then for subsequently written events.
+  #
+  # For example, if a starting point of 50 is specified when a stream has 100 events in it,
+  # the subscriber can expect to see events 51 through 100, and then any events subsequently
+  # written until such time as the subscription is dropped or closed.
+  #
   class CatchUpSubscription < Subscription
     MAX_READ_BATCH = 100
 

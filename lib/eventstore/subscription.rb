@@ -1,4 +1,12 @@
 class Eventstore
+  # Volatile Subscriptions
+  #
+  # This kind of subscription calls a given function for events written
+  # after the subscription is established.
+  #
+  # For example, if a stream has 100 events in it when a subscriber connects,
+  # the subscriber can expect to see event number 101 onwards until the time
+  # the subscription is closed or dropped.
   class Subscription
     attr_reader :connection, :stream, :resolve_link_tos
     def initialize(connection, stream, resolve_link_tos: true)

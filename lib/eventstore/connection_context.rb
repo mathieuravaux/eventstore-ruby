@@ -1,6 +1,9 @@
 require 'promise'
 
 class Eventstore
+  # Extension of a Ruby implementation of the Promises/A+ spec
+  # that carries the correlation id of the command.
+  # @see https://github.com/lgierth/promise.rb
   class Promise < ::Promise
     attr_reader :correlation_id
     def initialize(correlation_id)
@@ -16,6 +19,8 @@ class Eventstore
     end
   end
 
+  # Registry storing handlers for the outstanding commands and
+  # current subscriptions
   class ConnectionContext
     attr_reader :mutex,  :requests, :targets
     def initialize
@@ -24,6 +29,7 @@ class Eventstore
       @targets = {}
     end
 
+    # rubocop:disable Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/MethodLength
     def register_command(uuid, command, target = nil)
       # p fn: "register_command", uuid: uuid, command: command
       case command
@@ -36,6 +42,7 @@ class Eventstore
       else fail("Unknown command #{command}")
       end
     end
+    # rubocop:enable Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/MethodLength
 
     def fulfilled_command(uuid, value)
       prom = nil

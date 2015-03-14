@@ -1,5 +1,13 @@
 require 'securerandom'
 
+# The Eventstore class is responsible for maintaining a full-duplex connection
+# between the client and the Event Store server.
+# EventStore is thread-safe, and it is recommended that only one instance per application is created.
+#
+# All operations are handled fully asynchronously, returning a promise.
+# If you need to execute synchronously, simply call .sync on the returned promise.
+#
+# To get maximum performance from the connection, it is recommended that it be used asynchronously.
 class Eventstore
   VERSION = '0.0.1'
 
