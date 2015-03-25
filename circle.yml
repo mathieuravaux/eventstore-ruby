@@ -1,3 +1,8 @@
+machine:
+  pre:
+    - wget http://download.geteventstore.com/binaries/EventStore-OSS-Linux-v3.0.3.tar.gz
+    - tar xzf EventStore-OSS-Linux-v3.0.3.tar.gz
+    - nohup bash -c 'cd EventStore-OSS-Linux-v3.0.3/; ./run-node.sh --run-projections=All --int-http-port=2113 --int-tcp-port=1113 --db=/tmp/eventstore &'
 notify:
   webhooks:
     - url: https://webhooks.gitter.im/e/e20bfa93dc2e11895805
