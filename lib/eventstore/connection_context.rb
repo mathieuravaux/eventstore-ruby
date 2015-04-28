@@ -82,7 +82,9 @@ class Eventstore
       prom = Promise.new(uuid)
       mutex.synchronize do
         requests[uuid] = prom
-        targets[uuid] = target
+        if target != nil
+          targets[uuid] = target
+        end
       end
       prom
     end
