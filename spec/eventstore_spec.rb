@@ -6,7 +6,6 @@ describe Eventstore do
   let(:injector) { new_event_store }
 
   def new_event_store
-    es = Eventstore.new('localhost', 1113)
     es.on_error { |error| Thread.main.raise(error) }
     es
   end
@@ -60,10 +59,11 @@ describe Eventstore do
     stream = "catchup-test-#{SecureRandom.uuid}"
     received = 0
 
-    sub = subject.new_subscription(stream)
-    sub.on_event { |_event| received += 1 }
-    sub.on_error { |error| fail(error.inspect) }
-    sub.start
+    subject.on_error { |error| fail(error.inspect) }
+
+    subscription = Eventstore::Subscription.new(subject, stream)
+    subscription.on_event { |_event| received += 1 }
+    subscription.start
 
     inject_events(stream, 50)
 
@@ -86,10 +86,11 @@ describe Eventstore do
 
     inject_events(stream, 1220)
 
-    sub = subject.new_catchup_subscription(stream, -1)
-    sub.on_event { |_event| mutex.synchronize { received += 1 } }
-    sub.on_error { |error| fail error.inspect }
-    sub.start
+    subject.on_error { |error| fail error.inspect }
+
+    catchup_subscription = Eventstore::CatchUpSubscription.new(subject, stream, -1)
+    catchup_subscription.on_event { |_event| mutex.synchronize { received += 1 } }
+    catchup_subscription.start
 
     inject_events_async(stream, 780)
 
